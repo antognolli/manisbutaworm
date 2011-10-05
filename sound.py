@@ -1,5 +1,6 @@
 from constants import SOUND, MUSIC, SOUND_VOL, MUSIC_VOL, TRACKS
 import random
+import pyglet
 
 try:
     import pyglet.media.avbin

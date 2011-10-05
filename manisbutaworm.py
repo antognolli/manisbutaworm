@@ -22,9 +22,9 @@ class LogoLayer(Layer):
     def __init__(self):
         super(LogoLayer, self).__init__()
 
-        self.img = pyglet.resource.image('jungle.png')
-        self.img.anchor_x = self.img.width / 2
-        self.img.anchor_y = self.img.height / 2
+        # self.img = pyglet.resource.image('jungle.png')
+        # self.img.anchor_x = self.img.width / 2
+        # self.img.anchor_y = self.img.height / 2
 
         name = Label('Man Is But A Worm',
             font_name = FONT, font_size = 40,
@@ -41,7 +41,8 @@ class LogoLayer(Layer):
         sound.start_music()
 
     def draw(self):
-        self.img.blit(WIDTH / 2, HEIGHT / 2)
+        # self.img.blit(WIDTH / 2, HEIGHT / 2)
+        pass
 
     def on_key_press(self, k, m):
         if k in [key.SPACE, key.RETURN]:

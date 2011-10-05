@@ -1,5 +1,6 @@
 import pyglet
 from pyglet.gl import *
+from pyglet.window import key
 import Box2D as box2d
 import math
 
@@ -13,47 +14,68 @@ from constants import WIDTH, HEIGHT
 
 
 class RectBlock(draw.Canvas):
-    p1 = (-1.0, -1.0)
-    p2 = (1.0, -1.0)
-    p3 = (1.0, 1.0)
-    p4 = (-1.0, 1.0)
+    p1 = (-10.0, -10.0)
+    p2 = (10.0, -10.0)
+    p3 = (10.0, 10.0)
+    p4 = (-10.0, 10.0)
+    zoom = 1
+    color = (0, 255, 0, 255)
+    stroke_width = 1
 
-    def __init__(self, points=None):
+    def __init__(self, points=None, zoom=None, color=None):
         super(RectBlock, self).__init__()
+
+        self.points = [self.p1, self.p2, self.p3, self.p4]
+
+        if zoom:
+            self.zoom = zoom
 
         if not points:
             return
 
-        self.p1 = points[0][0],points[0][1]
-        self.p2 = points[1][0],points[1][1]
-        self.p3 = points[2][0],points[2][1]
-        self.p4 = points[3][0],points[3][1]
+        if color:
+            self.color = color
 
-        self.set_color((255,255,0,255))
-        self.set_stroke_width(5)
+        for i, p in enumerate(points):
+            self.points[i] = (p[0] * self.zoom, p[1] * self.zoom)
+
+    def _point_xy(self, point):
+        # This function is here to be used if later we need some kind of
+        # conversion.
+        return (point[0], point[1])
 
     def render(self):
-        print "rendering block"
+        self.set_color(self.color)
+        self.set_stroke_width(3)
         self.set_join(draw.MITER_JOIN)
-        self.move_to(self.p1)
-        self.line_to(self.p2)
-        self.line_to(self.p3)
-        self.line_to(self.p4)
-        self.line_to(self.p1)
+        self.move_to(self._point_xy(self.points[0]))
+        self.line_to(self._point_xy(self.points[1]))
+        self.line_to(self._point_xy(self.points[2]))
+        self.line_to(self._point_xy(self.points[3]))
+        self.line_to(self._point_xy(self.points[0]))
 
 class GameCtrl(Layer):
     is_event_handler = True
+    debug = None
 
     def __init__(self, model):
         super(GameCtrl,self).__init__()
 
         self.model = model
-
         self.image = pyglet.resource.image('hero.png')
+        self.debug = self.model.settings.debugLevel
 
-    def on_key_pressed(self, k, m):
-        if k in [key.SPACE, key.RETURN]:
+    def on_key_press(self, k, m):
+        if k == key.RETURN:
             self.model.act()
+        elif k == key.RIGHT:
+            self.model.move(1)
+        elif k == key.LEFT:
+            self.model.move(-1)
+        elif k == key.UP:
+            self.model.jump()
+        else:
+            print "unhandled key press:", k, m
 
     def step(self, dt):
         self.elapsed += dt
@@ -71,27 +93,39 @@ class GameCtrl(Layer):
             props = b.GetUserData()
             if not props:
                 continue
-            sprite = props.get_sprite()
+            sprite, dsprite = props.get_sprite()
             if not sprite:
                 if props.isCharacter:
+                    shape = b.GetShapeList()[0]
+                    vertices = shape.getVertices_b2Vec2()
+                    if self.debug:
+                        dsprite = RectBlock(vertices, zoom=self.model.zoom, color=(255,0,0,255))
                     sprite = Sprite(self.image)
                 elif props.isBlock:
                     shape = b.GetShapeList()[0]
                     vertices = shape.getVertices_b2Vec2()
-                    sprite = RectBlock(vertices)
-                    print sprite.p1, sprite.p2, sprite.p3, sprite.p4
+                    sprite = RectBlock(vertices, zoom=self.model.zoom)
+                    dsprite = None
                 else:
                     continue
 
-            props.set_sprite(sprite)
-            self.add(sprite)
+                props.set_sprite(sprite, dsprite)
+                self.add(sprite)
+                if dsprite:
+                    self.add(dsprite)
             sprite.position = (b.position.x * self.model.zoom), \
                 (b.position.y * self.model.zoom)
             degrees = -(b.GetAngle() * 180) / math.pi
             sprite.rotation = degrees
 
+            if dsprite:
+                dsprite.position = (b.position.x * self.model.zoom), \
+                    (b.position.y * self.model.zoom)
+                degrees = -(b.GetAngle() * 180) / math.pi
+                dsprite.rotation = degrees
+
         # center the image
-        glTranslatef(-320, -240, -320.0)
+        glTranslatef(-400, -300, -800.0)
 
     def on_enter(self):
         super(GameCtrl, self).on_enter()

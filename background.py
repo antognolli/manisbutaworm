@@ -13,4 +13,5 @@ class BackgroundLayer(Layer):
         self.img.anchor_y = self.img.height / 2
 
     def draw(self):
-        self.img.blit(WIDTH / 2, HEIGHT / 2)
+        # self.img.blit(WIDTH / 2, HEIGHT / 2)
+        pass

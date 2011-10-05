@@ -8,6 +8,7 @@ class BodyProperties(object):
     isCharacter = False
     isBlock = True
     _sprite = None
+    _dsprite = None
 
     def __init__(self, isBlock=True, isCharacter=False):
         super(BodyProperties,self).__init__()
@@ -16,18 +17,22 @@ class BodyProperties(object):
             self.isCharacter = True
 
     def get_sprite(self):
-        return self._sprite
+        return self._sprite, self._dsprite
 
-    def set_sprite(self, sprite):
+    def set_sprite(self, sprite, dsprite=None):
         self._sprite = sprite
+        self._dsprite = dsprite
 
 class GameModel(pyglet.event.EventDispatcher):
     def __init__(self):
         super(GameModel,self).__init__()
         self.acting = False
 
+        self.character = None
+        self.ground = None
+
         # Box2D Initialization
-        self.zoom = 10
+        self.zoom = 50.0
         self.worldAABB=box2d.b2AABB()
         self.worldAABB.lowerBound = (-200.0, -100.0)
         self.worldAABB.upperBound = ( 200.0, 200.0)
@@ -56,34 +61,46 @@ class GameModel(pyglet.event.EventDispatcher):
                             box2d.b2DebugDraw.e_centerOfMassBit),]
 
         # Create hero
-        body = self.create_character(10, 20)
-        body.SetMassFromShapes()
+        self.character = self.create_character(200, 800, 50, 100)
+        self.character.SetMassFromShapes()
+        self.character.linearVelocity = (1, 0)
         if self.settings.debugLevel:
-            print body
+            print self.character
 
         # Create ground
-        body = self.create_ground(0, 10, 20, 5)
+        self.ground = self.create_ground(500, 0, 1000, 20)
+        self.wall = self.create_ground(400, 20, 100, 20)
+        self.wall2 = self.create_ground(600, 100, 100, 20)
 
 
-    def create_character(self, x, y):
+    def create_character(self, x, y, w, h):
         props = BodyProperties(isCharacter=True)
         sd = box2d.b2PolygonDef()
-        sd.SetAsBox(10.0, 10.0)
+        rx = x / self.zoom
+        ry = y / self.zoom
+        rw = (w / 2) / self.zoom
+        rh = (h / 2) / self.zoom
+        sd.SetAsBox(rw, rh)
         sd.density = 1.0
 
         bd = box2d.b2BodyDef()
-        bd.position = (x, y)
+        bd.position = (rx, ry)
         body = self.world.CreateBody(bd)
         body.CreateShape(sd)
         body.SetUserData(props)
+        body.SetFixedRotation(True)
         return body
 
     def create_ground(self, x, y, w, h):
+        rx = x / self.zoom
+        ry = y / self.zoom
+        rw = (w / 2) / self.zoom
+        rh = (h / 2) / self.zoom
         props = BodyProperties()
         sd = box2d.b2PolygonDef()
-        sd.SetAsBox(w, h)
+        sd.SetAsBox(rw, rh)
         bd = box2d.b2BodyDef()
-        bd.position = (x, y)
+        bd.position = (rx, ry)
         body = self.world.CreateBody(bd)
         body.CreateShape(sd)
         body.SetUserData(props)
@@ -98,6 +115,19 @@ class GameModel(pyglet.event.EventDispatcher):
 
         self.acting = True
         self.dispatch_event("on_move")
+
+    def jump(self):
+        vel = self.character.linearVelocity
+        vel = (vel[0], 5)
+        self.character.linearVelocity = vel
+        self.character.WakeUp()
+
+    def move(self, direction):
+        speed = direction * 3
+        vel = self.character.linearVelocity
+        vel = (speed, vel[1])
+        self.character.linearVelocity = vel
+        self.character.WakeUp()
 
 
 GameModel.register_event_type('on_move')
